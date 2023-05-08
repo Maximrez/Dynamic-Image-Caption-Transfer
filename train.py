@@ -4,6 +4,17 @@ from transformers import VisionEncoderDecoderModel, BertTokenizerFast, ViTImageP
 from tqdm import tqdm
 import os
 import pandas as pd
+import numpy as np
+import random
+
+seed = 123
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
+np.random.seed(seed)
+random.seed(seed)
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
 
 
 def init_model(device):
@@ -41,11 +52,10 @@ def train(model, tokenizer, image_processor, data_loader, num_epochs=100, learni
             pixel_values = image_processor(images=images, return_tensors="pt").pixel_values
             pixel_values = pixel_values.to(device)
 
-            labels = tokenizer(captions, return_tensors="pt").input_ids
+            labels = tokenizer(captions, return_tensors="pt", padding=True).input_ids
             labels.to(device)
 
-            losses = sum(model(pixel_values=pixel_values, labels=labels).loss)
-            # print(losses)
+            losses = model(pixel_values=pixel_values, labels=labels).loss
 
             optimizer.zero_grad()
             losses.backward()
@@ -87,9 +97,12 @@ def init_dataloader(batch_size=10):
         return tuple(zip(*batch))
 
     captions_df = pd.read_csv(os.path.join('data', 'captions.csv'))
+    images = list(captions_df['image'])
+    captions = list(captions_df['caption'])
+
     my_dataset = MyDataset(data_dir='data\\images',
-                           names=list(captions_df['image']),
-                           captions=list(captions_df['caption']))
+                           names=images,
+                           captions=captions)
 
     return torch.utils.data.DataLoader(my_dataset,
                                        batch_size=batch_size,
