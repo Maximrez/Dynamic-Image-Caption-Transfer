@@ -96,7 +96,7 @@ def init_dataloader(batch_size=10):
     def collate_fn(batch):
         return tuple(zip(*batch))
 
-    captions_df = pd.read_csv(os.path.join('data', 'captions_ru.csv'))
+    captions_df = pd.read_csv(os.path.join('data', 'captions_ru.csv'), index_col='index')
     images = list(captions_df['image'])
     captions = list(captions_df['caption_ru'])
 
