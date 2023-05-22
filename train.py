@@ -39,13 +39,11 @@ def init_model(device):
 def train(model, tokenizer, image_processor, data_loader, num_epochs=100, learning_rate=0.001):
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.Adam(params, amsgrad=True, lr=learning_rate)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20)
 
     loss_history = list()
 
     for epoch in tqdm(range(num_epochs)):
-        if epoch != 0:
-            scheduler.step()
         model.train()
         sum_losses = 0
         for images, captions in data_loader:
@@ -66,6 +64,8 @@ def train(model, tokenizer, image_processor, data_loader, num_epochs=100, learni
         avg_loss = sum_losses / len(data_loader)
         loss_history.append(avg_loss)
         print(f'Epoch: {epoch + 1}/{num_epochs}, avg loss: {avg_loss}')
+
+        scheduler.step()
 
     return loss_history
 
@@ -96,9 +96,9 @@ def init_dataloader(batch_size=10):
     def collate_fn(batch):
         return tuple(zip(*batch))
 
-    captions_df = pd.read_csv(os.path.join('data', 'captions.csv'))
+    captions_df = pd.read_csv(os.path.join('data', 'captions_ru.csv'))
     images = list(captions_df['image'])
-    captions = list(captions_df['caption'])
+    captions = list(captions_df['caption_ru'])
 
     my_dataset = MyDataset(data_dir='data\\images',
                            names=images,
