@@ -1,0 +1,15 @@
+[Unit]
+Description=Translate
+After=syslog.target
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/usr/local/bin/translate
+ExecStart=/usr/bin/python3 /usr/local/bin/translate/translate.py
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
