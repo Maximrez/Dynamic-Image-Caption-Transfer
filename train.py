@@ -28,10 +28,13 @@ TRAIN_IMAGEPROCESSOR_PATH = "./train/imageprocessor"
 def init_model(device):
     # encoder_model = "google/vit-base-patch16-224"
     encoder_model = "google/vit-base-patch16-224-in21k"
+    # encoder_model = "vit-rugpt2-image-captioning"
     # encoder_model = "microsoft/swin-base-patch4-window7-224-in22k"
 
     # decoder_model = "bert-base-multilingual-cased"
-    decoder_model = "Helsinki-NLP/opus-mt-ru-en"
+    # decoder_model = "Helsinki-NLP/opus-mt-ru-en"
+    # decoder_model = "vit-rugpt2-image-captioning"
+    decoder_model = "sberbank-ai/rugpt3large_based_on_gpt2"
 
     tokenizer = AutoTokenizer.from_pretrained(decoder_model)
     # tokenizer = BertTokenizerFast.from_pretrained(decoder_model)
@@ -39,9 +42,15 @@ def init_model(device):
     image_processor = ViTImageProcessor.from_pretrained(encoder_model)
 
     model = VisionEncoderDecoderModel.from_encoder_decoder_pretrained(encoder_model, decoder_model).to(device)
+    # model = VisionEncoderDecoderModel.from_pretrained("vit-rugpt2-image-captioning").to(device)
 
-    model.config.decoder_start_token_id = tokenizer.cls_token_id
+    tokenizer.pad_token = tokenizer.eos_token
+    # model.config.decoder_start_token_id = tokenizer.cls_token_id
+    model.config.decoder_start_token_id = tokenizer.bos_token_id
     model.config.pad_token_id = tokenizer.pad_token_id
+    # model.config.eos_token_id = tokenizer.sep_token_id
+    model.config.max_new_tokens = 64  # максимальное количество слов в датасете - 64
+    model.decoder.resize_token_embeddings(len(tokenizer))
 
     return model, tokenizer, image_processor
 
@@ -55,9 +64,6 @@ def init_model_offline(device, train_path: bool = False):
         model = VisionEncoderDecoderModel.from_pretrained(VISIONENCODERDECODERMODEL_PATH).to(device)
         tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_PATH)
         image_processor = ViTImageProcessor.from_pretrained(IMAGEPROCESSOR_PATH)
-
-    model.config.decoder_start_token_id = tokenizer.cls_token_id
-    model.config.pad_token_id = tokenizer.pad_token_id
 
     return model, tokenizer, image_processor
 
@@ -134,8 +140,6 @@ def init_dataloader(batch_size=5):
     captions_df = pd.read_csv(os.path.join('data', 'captions_ru.csv'), index_col='index')
     images = list(captions_df['image'])[:1000]
     captions = list(captions_df['caption_ru'])[:1000]
-    # images = [list(captions_df['image'])[0]]
-    # captions = [list(captions_df['caption_ru'])[0]]
 
     my_dataset = MyDataset(data_dir='/home/msreznik/PythonProjects/DICT/data/images',
                            names=images,
@@ -151,17 +155,10 @@ def init_dataloader(batch_size=5):
 
 
 def save_offline_models():
-    encoder_model = "google/vit-base-patch16-224-in21k"
+    model, tokenizer, image_processor = init_model('cpu')
 
-    decoder_model = "Helsinki-NLP/opus-mt-ru-en"
-
-    tokenizer = AutoTokenizer.from_pretrained(decoder_model)
     tokenizer.save_pretrained(TOKENIZER_PATH)
-
-    image_processor = ViTImageProcessor.from_pretrained(encoder_model)
     image_processor.save_pretrained(IMAGEPROCESSOR_PATH)
-
-    model = VisionEncoderDecoderModel.from_encoder_decoder_pretrained(encoder_model, decoder_model)
     model.save_pretrained(VISIONENCODERDECODERMODEL_PATH)
 
 
@@ -184,18 +181,14 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("device:", device)
 
-    # loss_history, model, tokenizer, image_processor = train(device, *init_model_offline(device), init_dataloader())
-    # print(loss_history)
-    # with open('loss_history.txt', 'w', encoding='utf-8') as f:
-    #     f.writelines('\n'.join(list(map(str, loss_history))))
-
     model, tokenizer, image_processor = init_model_offline(device, train_path=False)
+    # model, tokenizer, image_processor = init_model(device)
+    loss_history, model, tokenizer, image_processor = train(device, model, tokenizer, image_processor, init_dataloader())
+    print(loss_history)
+    with open('loss_history.txt', 'w', encoding='utf-8') as f:
+        f.writelines('\n'.join(list(map(str, loss_history))))
 
-    # img = Image.open(r'C:\Users\maxim\Projects\PycharmProjects\DynamicImageCaptionTransfer\data\images\coco_val2014_6079.jpg')
-
-    # test_file = r'/home/msreznik/PythonProjects/DICT/data/test.jpg'
-    test_file = 'data/test.jpg'
+    test_file = r'/home/msreznik/PythonProjects/DICT/data/test.jpg'
+    # test_file = r'data/test.jpg'
     generated_text = test_picture(device, model, tokenizer, image_processor, test_file)
-    print(len(generated_text))
-    print(type(generated_text))
-    print(generated_text)
+    print(f'Test image caption: {[generated_text]}')
