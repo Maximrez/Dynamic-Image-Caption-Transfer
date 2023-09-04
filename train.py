@@ -141,12 +141,15 @@ def init_dataloader(batch_size=5):
     images = list(captions_df['image'])[:1000]
     captions = list(captions_df['caption_ru'])[:1000]
 
-    my_dataset = MyDataset(data_dir='/home/msreznik/PythonProjects/DICT/data/images',
-                           names=images,
-                           captions=captions)
+    # my_dataset = MyDataset(data_dir='/home/msreznik/PythonProjects/DICT/data/images',
+    #                        names=images,
+    #                        captions=captions)
     # my_dataset = MyDataset(data_dir='data/images',
     #                        names=images,
     #                        captions=captions)
+    my_dataset = MyDataset(data_dir='data\\images',
+                           names=images,
+                           captions=captions)
 
     return torch.utils.data.DataLoader(my_dataset,
                                        batch_size=batch_size,
@@ -188,7 +191,8 @@ if __name__ == '__main__':
     with open('loss_history.txt', 'w', encoding='utf-8') as f:
         f.writelines('\n'.join(list(map(str, loss_history))))
 
-    test_file = r'/home/msreznik/PythonProjects/DICT/data/test.jpg'
+    # test_file = r'/home/msreznik/PythonProjects/DICT/data/test.jpg'
     # test_file = r'data/test.jpg'
+    test_file = 'data\\test.jpg'
     generated_text = test_picture(device, model, tokenizer, image_processor, test_file)
-    print(f'Test image caption: {[generated_text]}')
+    print(f'Test image caption: {generated_text}')
